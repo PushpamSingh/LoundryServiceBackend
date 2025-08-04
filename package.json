@@ -1,0 +1,25 @@
+{
+  "name": "loundryservice",
+  "version": "1.0.0",
+  "description": "\"A Professional Loundry Service\"",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --watch src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "LoundryWala",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "express-router": "^0.0.1",
+    "form-data": "^4.0.4",
+    "mongoose": "^8.17.0",
+    "prettier": "^3.6.2",
+    "razorpay": "^2.9.6"
+  }
+}
