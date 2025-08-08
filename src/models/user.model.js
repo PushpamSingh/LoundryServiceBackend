@@ -34,6 +34,9 @@ const userSchema=new mongoose.Schema({
         minlength:[6,"password must be at least 6 charachter"],
         trim:true
     },
+    avatar:{
+        type:String,//?image url uploaded on cloudinary 
+    },
     refreshtoken:{
         type:String
     }
