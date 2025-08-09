@@ -74,7 +74,7 @@ const UpdateAvatar=Asynchandler(async(req,res)=>{
 const UpdateUserDetails=Asynchandler(async(req,res)=>{
     try {
         const {fullName,email,phone} = req.body
-        const userId =req.user?._id
+        const userId = req.user?._id
 
     } catch (error) {
          res.status(500).json(
@@ -82,3 +82,13 @@ const UpdateUserDetails=Asynchandler(async(req,res)=>{
          )
     }
 })
+
+export {
+    Registeruser,
+    Loginuser,
+    Logoutuser,
+    GetCurrentuser,
+    ChangePassword,
+    UpdateAvatar,
+    UpdateUserDetails
+}
