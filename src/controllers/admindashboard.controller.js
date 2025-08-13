@@ -8,7 +8,7 @@ const TotalorderStatusCountansRevenue = Asynchandler(async (req, res) => {
         //! Validate and check for user role and send count of all orders of all users on the basis of status
     } catch (error) {
         res.status(500).json(
-            new ApiError(500, error?.message)
+            new ApiError(500, error?.message,"bipin")
         )
     }
 })
