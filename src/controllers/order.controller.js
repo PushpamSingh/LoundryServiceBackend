@@ -9,7 +9,7 @@ const Placeorder = Asynchandler(async (req, res) => {
         const userId = req.user?._id;
         //!Generate OrderID (ORD-001)
         //?calculate price of a item from orderitem and create new document for orderitem
-
+            
     } catch (error) {
         res.status(500).json(
             new ApiError(500, error?.message)
