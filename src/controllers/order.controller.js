@@ -1,3 +1,4 @@
+import { Order } from "../models/order.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Asynchandler } from "../utils/Asynchandler.js";
@@ -32,7 +33,7 @@ const TrackOrder = Asynchandler(async (req, res) => {
 
 const CanceleOrder = Asynchandler(async (req, res) => {
     try {
-        const { orderId , cancellationReason} = req.body
+        const { orderId , cancellationReason } = req.body
         const userId = req.user?._id
         //!if role of userId is user and userId, orderId both are in ordermodel then update the status
     } catch (error) {
@@ -44,8 +45,15 @@ const CanceleOrder = Asynchandler(async (req, res) => {
 
 const Updatepickuptime = Asynchandler(async (req, res) => {
     try {
-        const { pickupTime } = req.body
-        const userId = req.user?._id
+        const { pickupTime } = req.body;
+        const userId = req.user?._id;
+        if([pickupTime].some((data)=>data===" ")){
+            throw new ApiError("Please choose pickup time");
+        }
+        const PickupTime = await Order.findByIdAndUpdate(userId,{pickupTime}, {new:true});
+        return res.status(200).json(
+            new ApiResponse(200,PickupTime,"Successfully updated the pickuptime")
+        )
     } catch (error) {
         res.status(500).json(
             new ApiError(500, error?.message)
@@ -58,6 +66,11 @@ const Updatedeliverytime = Asynchandler(async (req, res) => {
         const { deliveryTime } = req.body
         const userId = req.user?._id
         //!if userId is admin then only update picktime
+        if([deliveryTime].some((data)=>data===" ")){
+            throw new ApiError("Choose a delicery time")
+            
+        }
+        
     } catch (error) {
         res.status(500).json(
             new ApiError(500, error?.message)
@@ -70,7 +83,7 @@ const Updatestatus = Asynchandler(async (req, res) => {
         const { status } = req.body
         const userId = req.user?._id
         //! if userId is admin then only update status
-
+        
 
     } catch (error) {
         res.status(500).json(
