@@ -25,10 +25,6 @@ const Registeruser = Asynchandler(async (req, res) => {
         if ([fullName, email, phone, role, password].some((data) => data === "")) {
             throw new ApiError(404, "Fields are empty")
         }
-        const avatar = req.file;
-        if (!avatar) {
-            throw new ApiError(404, "Image not found")
-        }
         //Existing user
         const existedUser = await User.findOne({
             $or: [
@@ -46,16 +42,10 @@ const Registeruser = Asynchandler(async (req, res) => {
         if (!emailRegex.test(email)) {
             throw new ApiError(400, "Please enter valid emailID")
         }
-        const uploadOnCLoudinary = uploadCloudinary(avatar)
-        if (!uploadOnCLoudinary) {
-            throw new ApiError(400, "Cloudinary error ! image not uploaded")
-        }
-
         const user = await User.create({
             fullName,
             email,
             phone,
-            avatar: uploadOnCLoudinary?.url,
             role,
             password
         })
@@ -243,17 +233,43 @@ const ChangePassword = Asynchandler(async (req, res) => {
     }
 })
 
-const UpdateAvatar = Asynchandler(async (req, res) => {
+const UploadAvatar = Asynchandler(async (req, res) => {
     try {
-        const avatar = req.file?.avatar[0]
+        const avatar = req.file?.path;
         const userId = req.user?._id
-        if (!avatar) {
-            throw new ApiError(404, "Please upload an Image");
+        const avatarpath = "";
+        if (avatar) {
+            const uploadOnCloudinary = await uploadCloudinary(avatar);
+            if (!uploadOnCloudinary) {
+                throw new ApiError(409, "Cloudinary Error")
+            }
+            avatarpath = uploadOnCloudinary?.url
+        } else {
+            const randomIdx = Math.floor(Math.random() * 100) + 1
+            const randomAvatar = `https://avatar.iran.liara.run/public/${randomIdx}`
+            avatarpath = randomAvatar
         }
-        const updatedAvatar = await User.findByIdAndUpdate(userId);
-        return res.status(200).json(
-            new ApiResponse(200, updatedAvatar, "Avatar updated Successfully")
+        if (!isValidObjectId(userId)) {
+            throw new ApiError(400, "Unauthorized ! Invalid userId")
+        }
+        const updateAvatar = await User.findByIdAndUpdate(
+            userId,
+            {
+                $set: {
+                    avatar: avatarpath
+                }
+            },
+            {
+                new: true
+            }
         )
+        if (!updateAvatar) {
+            throw new ApiError(400, "Image Uploaded failed")
+        }
+        return req.status(200)
+            .json(
+                new ApiResponse(200, updateAvatar, "Image uploaded successfuly")
+            )
 
     } catch (error) {
         res.status(500).json(
@@ -303,6 +319,6 @@ export {
     Logoutuser,
     GetCurrentuser,
     ChangePassword,
-    UpdateAvatar,
+    UploadAvatar,
     UpdateUserDetails
 };
