@@ -18,7 +18,6 @@ const orderitemSchema=new mongoose.Schema({
         type:Number,
         required:[true,"itemprice is required"]
     },
-
 },{timestamps:true})
 
 export const Orderitem=mongoose.model('Orderitem',orderitemSchema)

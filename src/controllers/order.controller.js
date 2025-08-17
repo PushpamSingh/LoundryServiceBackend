@@ -118,6 +118,38 @@ const TrackOrder = Asynchandler(async (req, res) => {
         const userId = req.user?._id
         //?send name, phone, total address, pickupTime,deliveryTime,orderId,paymetmethod,{itemname,totalitem} to the user
         //!calculate the price of total item on basis of totalitems of itemname
+
+         if(!isValidObjectId(userId)){
+            throw new ApiError(400, "Unauthorized ! Invalid userId")
+        }
+        if(!orderId){
+            throw new ApiError(400,"Provide OrderID to track the order!!");
+        }
+        const order=await Order.findOne({
+            $and:[
+                {orderId:orderId},
+                {userid:userId}
+            ]
+        }).select("-userid -cancellationReason")
+        
+        if(!order){
+            throw new ApiError(404,"Invalid orderID !! order not found")
+        }
+        const orderitemDetails=await Orderitem.findOne({
+            $and:[
+                {userid:userId},
+                {orderid:order?._id}
+            ]
+        }).select("-userid -orderid")
+
+        if(!orderitemDetails){
+            throw new ApiError(404,"Invalid order Details !! orderItem not found")
+        }
+
+        return res.status(200)
+        .json(
+            new ApiResponse(200,{order,orderitemDetails},"Order Details Fetched Successfully")
+        )
     } catch (error) {
         res.status(500).json(
             new ApiError(500, error?.message)
@@ -141,13 +173,7 @@ const Updatepickuptime = Asynchandler(async (req, res) => {
     try {
         const { pickupTime } = req.body;
         const userId = req.user?._id;
-        if([pickupTime].some((data)=>data===" ")){
-            throw new ApiError("Please choose pickup time");
-        }
-        const PickupTime = await Order.findByIdAndUpdate(userId,{pickupTime}, {new:true});
-        return res.status(200).json(
-            new ApiResponse(200,PickupTime,"Successfully updated the pickuptime")
-        )
+        //!if userId is admin then only update pickupTime
     } catch (error) {
         res.status(500).json(
             new ApiError(500, error?.message)
@@ -160,10 +186,7 @@ const Updatedeliverytime = Asynchandler(async (req, res) => {
         const { deliveryTime } = req.body
         const userId = req.user?._id
         //!if userId is admin then only update picktime
-        if([deliveryTime].some((data)=>data===" ")){
-            throw new ApiError("Choose a delicery time")
-            
-        }
+     
         
     } catch (error) {
         res.status(500).json(
