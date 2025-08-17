@@ -9,19 +9,16 @@ const orderitemSchema=new mongoose.Schema({
       type:mongoose.Schema.Types.ObjectId,
       ref:"User"  
     },
-    itemname:{
-        type:String,
+    totalitem:{
+        type:Map,
+        of:Number,
         required:[true,"itemname is required"]
     },
-    itemprice:{
+    totalprice:{
         type:Number,
         required:[true,"itemprice is required"]
-    },
-    totalitem:{
-        type:Number,
-        required:[true,"define total number of item"]
     },
 
 },{timestamps:true})
 
-export const orderitem=mongoose.model('orderitem',orderitemSchema)
+export const Orderitem=mongoose.model('Orderitem',orderitemSchema)

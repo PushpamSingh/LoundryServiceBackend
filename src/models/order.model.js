@@ -72,6 +72,9 @@ const orderSchema = new mongoose.Schema({
    cancellationReason:{
       type:String,
       default:""
+   },
+   instructions:{
+      type:String
    }
 }, { timestamps: true })
 
