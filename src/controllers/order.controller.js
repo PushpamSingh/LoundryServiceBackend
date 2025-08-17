@@ -1,16 +1,110 @@
-import { Order } from "../models/order.model.js";
+import { isValidObjectId } from "mongoose";
+import { Order, Order } from "../models/order.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Asynchandler } from "../utils/Asynchandler.js";
+import { User } from "../models/user.model.js";
+import { Orderitem } from "../models/orderitems.model.js";
 
 const Placeorder = Asynchandler(async (req, res) => {
     try {
         const { orderitem, name, phone, area, alternatephone, housenumber,
-            city, state, pincode, nearby, paymetmethod } = req.body;
+            city, state, pincode, nearby, paymetmethod ,instructions} = req.body;
         const userId = req.user?._id;
         //!Generate OrderID (ORD-001)
         //?calculate price of a item from orderitem and create new document for orderitem
-            
+        
+        if(!isValidObjectId(userId)){
+            throw new ApiError(400, "Unauthorized ! Invalid userId")
+        }
+        if([orderitem, name, phone, area, alternatephone, housenumber,
+            city, state, pincode, nearby, paymetmethod].some((field)=>field==="")){
+                throw new ApiError(400,"Fields must not be empty")
+            }
+        
+        const isUser=await User.findById(userId);
+        if(!isUser){
+            throw new ApiError(403,"Unauthorized ! Can't place order")
+        }
+
+        //!Generate custom orderId
+        const orderCount=await Order.countDocuments();
+        const nextOrderCount= orderCount+1;
+        const paddedNumber=String(nextOrderCount).padStart(3,"0");
+        const orderId=`ORD-${paddedNumber}`
+
+        const createOrder=await Order.create({
+            name:name,
+            phone:phone,
+            area:area,
+            alternatephone:alternatephone,
+            housenumber:housenumber,
+            city:city,
+            state:state,
+            pincode:pincode,
+            nearby:nearby,
+            userid:userId,
+            orderId:orderId,
+            paymetmethod:paymetmethod,
+            instructions:instructions
+        })
+        await createOrder.save({validateBeforeSave:false})
+
+        if(!createOrder){
+            throw new ApiError(400,"creating Order Failled!!!")
+        }
+        const order=await Order.findById(createOrder?._id).select("-cancellationReason")
+
+        if(!order){
+            throw new ApiError(404,"order not found")
+        }
+
+        if(!orderitem || typeof(orderitem)!=="object"){
+            throw new ApiError(400,"please provide some orderItem")
+        }
+        const newObj={};
+        let totalprice=0;
+        for(const[key,value] of Object.entries(orderitem)){
+            if(typeof(key)!=="string" || typeof(value)!=="number" || value<=0){
+                throw new ApiError(400,"please provide valid details")
+            }
+            newObj[key]=value
+            if(key==="Shirts"){
+                totalprice+=(value*15)
+            }else if(key==="Pants"){
+                totalprice+=(value*15)
+            }else if(key==="Dresses"){
+                totalprice+=(value*20)
+            }else if(key==="Suits"){
+                totalprice+=(value*35)
+            }else if(key==="Bedsheets"){
+                totalprice+=(value*10)
+            }else if(key==="BlanketsOrQuilts"){
+                totalprice+=(value*40)
+            }
+        }
+        
+        const createOrderItem = await Orderitem.create({
+            orderid:createOrder?._id,
+            userid:userId,
+            totalitem:newObj,
+            totalprice:totalprice
+        })
+        await createOrderItem.save({validateBeforeSave:false})
+
+        if(!createOrderItem){
+            throw new ApiError(400,"creating Order Item Failled!!!")
+        }
+        const createdOrderitem=await Orderitem.findById(createOrderItem?._id)
+
+        if(!createdOrderitem){
+            throw new ApiError(404,"Order Item Not Found")
+        }
+
+        return res.status(200)
+        .json(
+            new ApiResponse(200,{order,createdOrderitem},"Order Placed Successfully")
+        )
     } catch (error) {
         res.status(500).json(
             new ApiError(500, error?.message)
