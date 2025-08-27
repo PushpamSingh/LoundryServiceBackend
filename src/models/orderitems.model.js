@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 const orderitemSchema=new mongoose.Schema({
     orderid:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"Order"
+        type:String,
+        required:[true,"orderid is required"],
     },
     userid:{
       type:mongoose.Schema.Types.ObjectId,
