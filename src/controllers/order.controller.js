@@ -15,7 +15,7 @@ const Placeorder = Asynchandler(async (req, res) => {
         //?calculate price of a item from orderitem and create new document for orderitem
 
         if (!isValidObjectId(userId)) {
-            throw new ApiError(400, "Unauthorized ! Invalid userId")
+            throw new ApiError(401, "Unauthorized ! Invalid userId")
         }
         if ([orderitem, name, phone, area, alternatephone, housenumber,
             city, state, pincode, nearby, paymetmethod].some((field) => field === "")) {
@@ -216,9 +216,83 @@ const CanceleOrder = Asynchandler(async (req, res) => {
 
 const Updatepickuptime = Asynchandler(async (req, res) => {
     try {
-        const { pickupTime } = req.body;
+        const { orderId, pickupTime } = req.body;
         const userId = req.user?._id;
+        const orderSchemaId = req.param;
         //!if userId is admin then only update pickupTime
+
+        if (!isValidObjectId(userId)) {
+            throw new ApiError(400, "Unauthorized ! Invalid userId")
+        }
+        if (!isValidObjectId(orderSchemaId)) {
+            throw new ApiError(400, "Unauthorized ! Invalid orderSchemaId")
+        }
+
+        const userRole = await User.findById(userId);
+        if (userRole && userRole.role !== "admin") {
+            throw new ApiError(403, "Only Admin can update the pickup time")
+        }
+        if (!orderId) {
+            throw new ApiError(400, "orderId is required to update pickup time")
+        }
+        if (!pickupTime) {
+            throw new ApiError(400, "pickupTime is required")
+        }
+
+        const parsedPickup = new Date(pickupTime);
+        if (isNaN(parsedPickup.getTime())) {
+            throw new ApiError(400, "Invalid pickupTime format")
+        }
+        if (parsedPickup.getTime() < Date.now()) {
+            throw new ApiError(400, "pickupTime must be in the future")
+        }
+
+        // Read current order to validate against deliveryTime
+        const existingOrder = await Order.findOne({
+            $and: [
+                { _id: orderSchemaId },
+                { orderId: orderId }
+            ]
+        });
+        if (!existingOrder) {
+            throw new ApiError(404, "order not found!! or Failed to fetch order")
+        }
+
+        let newPickupTime = parsedPickup;
+        let newDeliveryTime = existingOrder.deliveryTime;
+
+        // Ensure deliveryTime stays after pickupTime; if not, shift deliveryTime to +50h from pickup
+        if (!newDeliveryTime || new Date(newDeliveryTime).getTime() <= newPickupTime.getTime()) {
+            newDeliveryTime = new Date(newPickupTime.getTime() + 50 * 60 * 60 * 1000);
+        }
+
+        const updatedOrder = await Order.findOneAndUpdate(
+            {
+                $and: [
+                    { _id: orderSchemaId },
+                    { orderId: orderId },
+                    { userid: userId }
+                ]
+            },
+            {
+                $set: {
+                    pickupTime: newPickupTime,
+                    deliveryTime: newDeliveryTime
+                }
+            },
+            {
+                new: true
+            }
+        )
+
+        if (!updatedOrder) {
+            throw new ApiError(400, "Pickup time update Failed or Order not found!!")
+        }
+
+        return res.status(200)
+            .json(
+                new ApiResponse(200, updatedOrder, "Pickup time updated successfully")
+            )
     } catch (error) {
         res.status(500).json(
             new ApiError(500, error?.message)
@@ -228,11 +302,79 @@ const Updatepickuptime = Asynchandler(async (req, res) => {
 
 const Updatedeliverytime = Asynchandler(async (req, res) => {
     try {
-        const { deliveryTime } = req.body
+        const { orderId, deliveryTime } = req.body
         const userId = req.user?._id
+        const orderSchemaId = req.param
         //!if userId is admin then only update picktime
 
+        if (!isValidObjectId(userId)) {
+            throw new ApiError(400, "Unauthorized ! Invalid userId")
+        }
+        if (!isValidObjectId(orderSchemaId)) {
+            throw new ApiError(400, "Unauthorized ! Invalid orderSchemaId")
+        }
 
+        const userRole = await User.findById(userId);
+        if (userRole && userRole.role !== "admin") {
+            throw new ApiError(403, "Only Admin can update the delivery time")
+        }
+        if (!orderId) {
+            throw new ApiError(400, "orderId is required to update delivery time")
+        }
+        if (!deliveryTime) {
+            throw new ApiError(400, "deliveryTime is required")
+        }
+
+        const parsedDelivery = new Date(deliveryTime);
+        if (isNaN(parsedDelivery.getTime())) {
+            throw new ApiError(400, "Invalid deliveryTime format")
+        }
+        if (parsedDelivery.getTime() < Date.now()) {
+            throw new ApiError(400, "deliveryTime must be in the future")
+        }
+
+        // Read current order to validate against pickupTime
+        const existingOrder = await Order.findOne({
+            $and: [
+                { _id: orderSchemaId },
+                { orderId: orderId }
+            ]
+        });
+        if (!existingOrder) {
+            throw new ApiError(404, "order not found!! or Failed to fetch order")
+        }
+
+        const currentPickup = new Date(existingOrder.pickupTime);
+        if (parsedDelivery.getTime() <= currentPickup.getTime()) {
+            throw new ApiError(400, "deliveryTime must be after pickupTime")
+        }
+
+        const updatedOrder = await Order.findOneAndUpdate(
+            {
+                $and: [
+                    { _id: orderSchemaId },
+                    { orderId: orderId },
+                    { userid: userId }
+                ]
+            },
+            {
+                $set: {
+                    deliveryTime: parsedDelivery
+                }
+            },
+            {
+                new: true
+            }
+        )
+
+        if (!updatedOrder) {
+            throw new ApiError(400, "Delivery time update Failed or Order not found!!")
+        }
+
+        return res.status(200)
+            .json(
+                new ApiResponse(200, updatedOrder, "Delivery time updated successfully")
+            )
     } catch (error) {
         res.status(500).json(
             new ApiError(500, error?.message)
