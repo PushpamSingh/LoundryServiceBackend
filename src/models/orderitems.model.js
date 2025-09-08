@@ -10,7 +10,7 @@ const orderitemSchema=new mongoose.Schema({
       ref:"User"  
     },
     totalitem:{
-        type:String,
+        type:Map,
         of:Number,
         required:[true,"itemname is required"]
     },

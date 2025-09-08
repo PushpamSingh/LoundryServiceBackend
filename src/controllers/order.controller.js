@@ -1,15 +1,15 @@
 import { isValidObjectId } from "mongoose";
-import { Order, Order } from "../models/order.model.js";
+import { Order } from "../models/order.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Asynchandler } from "../utils/Asynchandler.js";
 import { User } from "../models/user.model.js";
 import { Orderitem } from "../models/orderitems.model.js";
 
-const Placeorder = Asynchandler(async (req, res) => {
+const Createorder = Asynchandler(async (req, res) => {
     try {
         const { orderitem, name, phone, area, alternatephone, housenumber,
-            city, state, pincode, nearby, paymetmethod, instructions } = req.body;
+            city, state, pincode, nearby, instructions } = req.body;
         const userId = req.user?._id;
         //!Generate OrderID (ORD-001)
         //?calculate price of a item from orderitem and create new document for orderitem
@@ -18,7 +18,7 @@ const Placeorder = Asynchandler(async (req, res) => {
             throw new ApiError(401, "Unauthorized ! Invalid userId")
         }
         if ([orderitem, name, phone, area, alternatephone, housenumber,
-            city, state, pincode, nearby, paymetmethod].some((field) => field === "")) {
+            city, state, pincode, nearby].some((field) => field === "")) {
             throw new ApiError(400, "Fields must not be empty")
         }
 
@@ -45,7 +45,6 @@ const Placeorder = Asynchandler(async (req, res) => {
             nearby: nearby,
             userid: userId,
             orderId: orderId,
-            paymetmethod: paymetmethod,
             instructions: instructions
         })
         await createOrder.save({ validateBeforeSave: false })
@@ -101,12 +100,11 @@ const Placeorder = Asynchandler(async (req, res) => {
             throw new ApiError(404, "Order Item Not Found")
         }
 
-        return res.status(200)
-            .json(
-                new ApiResponse(200, { order, createdOrderitem }, "Order Placed Successfully")
-            )
+        // If online payment, return a hint to create Razorpay order
+        const responseData = { order, createdOrderitem };
+        return res.status(200).json(new ApiResponse(200, responseData, "Order Created Successfully"))
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -128,9 +126,10 @@ const TrackOrder = Asynchandler(async (req, res) => {
         const order = await Order.findOne({
             $and: [
                 { orderId: orderId },
-                { userid: userId }
+                { userid: userId },
+                {orderCompleted:true}
             ]
-        }).select("-userid -cancellationReason")
+        })
 
         if (!order) {
             throw new ApiError(404, "Invalid orderID !! order not found")
@@ -140,8 +139,8 @@ const TrackOrder = Asynchandler(async (req, res) => {
                 { userid: userId },
                 { orderid: order?._id }
             ]
-        }).select("-userid -orderid")
-
+        })
+        
         if (!orderitemDetails) {
             throw new ApiError(404, "Invalid order Details !! orderItem not found")
         }
@@ -151,7 +150,7 @@ const TrackOrder = Asynchandler(async (req, res) => {
                 new ApiResponse(200, { order, orderitemDetails }, "Order Details Fetched Successfully")
             )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -160,7 +159,7 @@ const TrackOrder = Asynchandler(async (req, res) => {
 const CanceleOrder = Asynchandler(async (req, res) => {
     try {
         const { orderId, cancellationReason } = req.body;
-        const orderSchemaId = req.param;
+        const {orderSchemaId} = req.params;
         const userId = req.user?._id;
         //!if role of userId is user and userId, orderId both are in ordermodel then update the status
         if (!isValidObjectId(userId)) {
@@ -185,7 +184,8 @@ const CanceleOrder = Asynchandler(async (req, res) => {
                 $and: [
                     { _id: orderSchemaId },
                     { orderId: orderId },
-                    { userid: userId }
+                    { userid: userId },
+                    {orderCompleted:true}
                 ]
             },
             {
@@ -208,7 +208,7 @@ const CanceleOrder = Asynchandler(async (req, res) => {
             )
 
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -218,7 +218,7 @@ const Updatepickuptime = Asynchandler(async (req, res) => {
     try {
         const { orderId, pickupTime } = req.body;
         const userId = req.user?._id;
-        const orderSchemaId = req.param;
+        const {orderSchemaId} = req.params;
         //!if userId is admin then only update pickupTime
 
         if (!isValidObjectId(userId)) {
@@ -251,7 +251,8 @@ const Updatepickuptime = Asynchandler(async (req, res) => {
         const existingOrder = await Order.findOne({
             $and: [
                 { _id: orderSchemaId },
-                { orderId: orderId }
+                { orderId: orderId },
+                {orderCompleted:true}
             ]
         });
         if (!existingOrder) {
@@ -271,7 +272,8 @@ const Updatepickuptime = Asynchandler(async (req, res) => {
                 $and: [
                     { _id: orderSchemaId },
                     { orderId: orderId },
-                    { userid: userId }
+                    { userid: userId },
+                    {orderCompleted:true}
                 ]
             },
             {
@@ -294,7 +296,7 @@ const Updatepickuptime = Asynchandler(async (req, res) => {
                 new ApiResponse(200, updatedOrder, "Pickup time updated successfully")
             )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -304,7 +306,7 @@ const Updatedeliverytime = Asynchandler(async (req, res) => {
     try {
         const { orderId, deliveryTime } = req.body
         const userId = req.user?._id
-        const orderSchemaId = req.param
+        const {orderSchemaId} = req.params
         //!if userId is admin then only update picktime
 
         if (!isValidObjectId(userId)) {
@@ -337,7 +339,8 @@ const Updatedeliverytime = Asynchandler(async (req, res) => {
         const existingOrder = await Order.findOne({
             $and: [
                 { _id: orderSchemaId },
-                { orderId: orderId }
+                { orderId: orderId },
+                {orderCompleted:true}
             ]
         });
         if (!existingOrder) {
@@ -376,7 +379,7 @@ const Updatedeliverytime = Asynchandler(async (req, res) => {
                 new ApiResponse(200, updatedOrder, "Delivery time updated successfully")
             )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -386,7 +389,7 @@ const Updatestatus = Asynchandler(async (req, res) => {
     try {
         const { orderId, status } = req.body;
         const userId = req.user?._id;
-        const orderSchemaId = req.param;
+        const {orderSchemaId} = req.params;
         //! if userId is admin then only update status
         if (!isValidObjectId(userId)) {
             throw new ApiError(400, "Unauthorized ! Invalid userId")
@@ -409,7 +412,8 @@ const Updatestatus = Asynchandler(async (req, res) => {
                 $and:[
                     {_id:orderSchemaId},
                     {orderId:orderId},
-                    {userid:userId}
+                    {userid:userId},
+                    {orderCompleted:true}
                 ]
             },
             {
@@ -432,14 +436,14 @@ const Updatestatus = Asynchandler(async (req, res) => {
 
 
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
 })
 
 export {
-    Placeorder,
+    Createorder,
     TrackOrder,
     CanceleOrder,
     Updatedeliverytime,

@@ -57,17 +57,20 @@ const orderSchema = new mongoose.Schema({
       uppercase: true, // Auto converts to uppercase
       trim: true
    },
-   paymetmethod: {
+   paymentmethod: {
       type: String,
       enum: ['COD', 'Online'],
       default: 'COD',
-      required:true
    },
    status:{
       type:String,
       enum:['pending','picked','washed','delivered','canceled'],
       default:'pending',
       required:true
+   },
+   orderCompleted:{
+      type:Boolean,
+      default:false
    },
    cancellationReason:{
       type:String,

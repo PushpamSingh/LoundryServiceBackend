@@ -2,6 +2,8 @@ import { Asynchandler } from "../utils/Asynchandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { Order } from "../models/order.model.js";
+import { isValidObjectId } from "mongoose";
+import { Receipt } from "../models/receipt.model.js";
 
 const TotalorderStatusCount = Asynchandler(async (req, res) => {
     try {
@@ -11,7 +13,12 @@ const TotalorderStatusCount = Asynchandler(async (req, res) => {
             throw new ApiError(401, "Unauthorized ! Invalid userId")
         }
          //?Find the total order from status count
-         const Orders = await Order.find({userid:userId});
+         const Orders = await Order.find({
+            $and:[
+                {userid:userId},
+                {orderCompleted:true}
+            ]
+         });
          const StatusCount = {}
          for (let order of Orders) {
              StatusCount[order?.status] = (StatusCount[order?.status] || 0) + 1
@@ -41,7 +48,8 @@ const PendingOrders = Asynchandler(async (req, res) => {
         const pendingOrders=await Order.find({
             $and:[
                 {userid:userId},
-                {status:'pending'}
+                {status:'pending'},
+                {orderCompleted:true}
             ]
         })
 
@@ -66,7 +74,8 @@ const PickedOrders=Asynchandler(async(req,res)=>{
         const pickedOrders=await Order.find({
             $and:[
                 {userid:userId},
-                {status:'picked'}
+                {status:'picked'},
+                {orderCompleted:true}
             ]
         })
 
@@ -90,7 +99,8 @@ const WashedOrders=Asynchandler(async(req,res)=>{
         const washedOrders=await Order.find({
             $and:[
                 {userid:userId},
-                {status:'washed'}
+                {status:'washed'},
+                {orderCompleted:true}
             ]
         })
 
@@ -114,7 +124,8 @@ const DeliveredOrders=Asynchandler(async(req,res)=>{
         const deliveredOrders=await Order.find({
             $and:[
                 {userid:userId},
-                {status:'delivered'}
+                {status:'delivered'},
+                {orderCompleted:true}
             ]
         })
 
@@ -132,6 +143,14 @@ const PaymentHistory=Asynchandler(async(req,res)=>{
     try {
         const userId=req.user?._id;
         //! Validate and check for user role and send all payment history orders of this user
+        if(!isValidObjectId(userId)){
+            throw new ApiError(401, "Unauthorized ! Invalid userId")
+        }
+        const payments=await Receipt.find({userid:userId})
+        return res.status(200)
+        .json(
+            new ApiResponse(200,payments,"payment history fetched")
+        )
     } catch (error) {
            res.status(500).json(
             new ApiError(500, error?.message)

@@ -19,7 +19,7 @@ const TotalorderStatusCountandRevenue = Asynchandler(async (req, res) => {
         }
 
         //?Find the total order from status count
-        const Orders = await Order.find();
+        const Orders = await Order.find({orderCompleted:true});
         const StatusCount = {}
         for (let order of Orders) {
             StatusCount[order?.status] = (StatusCount[order?.status] || 0) + 1
@@ -49,7 +49,7 @@ const TotalorderStatusCountandRevenue = Asynchandler(async (req, res) => {
             )
 
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -67,14 +67,19 @@ const PendingOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const pendingOrders=await Order.find({status:'pending'})
+        const pendingOrders=await Order.find({
+            $and:[
+                {status:'pending'},
+                {orderCompleted:true}
+            ]
+        })
 
         return res.status(200)
         .json(
             new ApiResponse(200,pendingOrders,"Pending Orders fetched successfuly")
         )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -92,14 +97,19 @@ const PickedOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const pickedOrders=await Order.find({status:'picked'})         
+        const pickedOrders=await Order.find({
+            $and:[
+                {status:'picked'},
+                {orderCompleted:true}
+            ]
+    })         
 
         return res.status(200)
         .json(
             new ApiResponse(200,pickedOrders,"Picked Orders fetched successfuly")
         )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -116,14 +126,19 @@ const WashedOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const washedOrders=await Order.find({status:'washed'})
+        const washedOrders=await Order.find({
+            $and:[
+                {status:'washed'},
+                {orderCompleted:true}
+            ]
+    })
 
         return res.status(200)
         .json(
             new ApiResponse(200,washedOrders,"Washed Orders fetched successfuly")
         )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -140,14 +155,19 @@ const DeliveredOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const deliveredOrders=await Order.find({status:'delivered'})
+        const deliveredOrders=await Order.find({
+            $and:[
+                {status:'delivered'},
+                {orderCompleted:true}
+            ]
+        })
 
         return res.status(200)
         .json(
             new ApiResponse(200,deliveredOrders,"Delivered Orders fetched successfuly")
         )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -164,13 +184,18 @@ const CanceledOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const canceledOrders=await Order.find({status:'canceled'})
+        const canceledOrders=await Order.find({
+            $and:[
+                {status:'canceled'},
+                {orderCompleted:true}
+            ]
+        })
         return res.status(200)
         .json(
             new ApiResponse(200,canceledOrders,"Canceled Orders fetched successfuly")
         )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
