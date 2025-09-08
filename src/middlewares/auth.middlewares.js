@@ -4,24 +4,24 @@ import dotenv from "dotenv"
 import { ApiError } from "../utils/ApiError.js"
 dotenv.config()
 
-export const VerifyJWT=async()=>{
+export const VerifyJWT = async (req, res, next) => {
    try {
-     const token=req.cookies?.AccessToken || req.headers.authorization.replace("Bearer ","")
+     const bearer = req.headers && req.headers.authorization ? req.headers.authorization : "";
+     const token = req.cookies?.AccessToken || (bearer.startsWith("Bearer ") ? bearer.replace("Bearer ", "") : "");
      if(!token){
          throw new ApiError(404,"Unathorized ! token not found")
      }
- 
-    try {
-         const decodeToken=await JWT.verify(token,process.env.ACCESS_TOKEN_SECRET);
+
+     try {
+         const decodeToken = await JWT.verify(token, process.env.ACCESS_TOKEN_SECRET);
          const user = await User.findById(decodeToken?._id).select("-password -refreshtoken");
-         
          if(!user){
              throw new ApiError(404,"Unauthorized ! user not found")
          }
-         req.user=user
-    } catch (error) {
+         req.user = user
+     } catch (error) {
         throw new ApiError(400,error?.message)
-    }
+     }
      next()
    } catch (error) {
        return res.status(500)

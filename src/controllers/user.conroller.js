@@ -3,6 +3,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { isValidObjectId } from "mongoose";
+import { uploadCloudinary } from "../utils/UploadCloudinary.js";
 
 const generateAccessAndRefreshToken = async function (userId) {
     try {
@@ -62,7 +63,7 @@ const Registeruser = Asynchandler(async (req, res) => {
             new ApiResponse(200, CreatedUser, "user created successfully")
         )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -118,7 +119,7 @@ const Loginuser = Asynchandler(async (req, res) => {
             )
 
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -158,7 +159,7 @@ const Logoutuser = Asynchandler(async (req, res) => {
                 new ApiResponse(200, LoggedOutUser, "Logout Successfully")
             )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -178,7 +179,7 @@ const GetCurrentuser = Asynchandler(async (req, res) => {
             new ApiResponse(200, CurrentUser, "Found Current User")
         )
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -227,7 +228,7 @@ const ChangePassword = Asynchandler(async (req, res) => {
         );
 
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -272,7 +273,7 @@ const UploadAvatar = Asynchandler(async (req, res) => {
             )
 
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
@@ -307,7 +308,7 @@ const UpdateUserDetails = Asynchandler(async (req, res) => {
         )
 
     } catch (error) {
-        res.status(500).json(
+        return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
