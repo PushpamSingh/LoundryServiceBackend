@@ -27,6 +27,8 @@ const Registeruser = Asynchandler(async (req, res) => {
             throw new ApiError(404, "Fields are empty")
         }
         //Existing user
+        console.log("Checking existing user",req.body);
+        
         const existedUser = await User.findOne({
             $or: [
                 { email: email },
