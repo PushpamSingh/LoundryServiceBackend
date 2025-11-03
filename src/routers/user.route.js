@@ -1,5 +1,5 @@
 import express from 'express'
-import { ChangePassword, GetCurrentuser, Loginuser, Logoutuser, Registeruser, UpdateUserDetails, UploadAvatar } from '../controllers/user.conroller.js'
+import { ChangePassword, GetCurrentuser, Loginuser, Logoutuser, Registeruser, UpdateUserDetails, UploadAvatar } from '../controllers/user.controller.js'
 import {VerifyJWT} from "../middlewares/auth.middlewares.js"
 import {upload} from "../middlewares/multer.middleware.js"
 const router=express.Router()

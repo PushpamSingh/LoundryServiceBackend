@@ -22,8 +22,8 @@ const generateAccessAndRefreshToken = async function (userId) {
 }
 const Registeruser = Asynchandler(async (req, res) => {
     try {
-        const { fullName, email, phone, role, password } = req.body
-        if ([fullName, email, phone, role, password].some((data) => data === "")) {
+        const { fullName, email, phone, password } = req.body
+        if ([fullName, email, phone, password].some((data) => data === "")) {
             throw new ApiError(404, "Fields are empty")
         }
         //Existing user
@@ -47,7 +47,6 @@ const Registeruser = Asynchandler(async (req, res) => {
             fullName,
             email,
             phone,
-            role,
             password
         })
         await user.save({ validateBeforeSave: false })
@@ -73,7 +72,7 @@ const Loginuser = Asynchandler(async (req, res) => {
     try {
         const { email, phone, password } = req.body;
         // Check if data is available
-        if ([email, phone, password].some((data) => data === "")) {
+        if ([email, password].some((data) => data === "")) {
             throw new ApiError(404, "email or password cannot be empty")
         }
 
@@ -187,9 +186,9 @@ const GetCurrentuser = Asynchandler(async (req, res) => {
 
 const ChangePassword = Asynchandler(async (req, res) => {
     try {
-        const { oldPassword, newPassord } = req.body
+        const { oldPassword, newPassword } = req.body
         const userId = req.user?._id;
-        if (!(oldPassword || newPassord)) {
+        if (!(oldPassword || newPassword)) {
             throw new ApiError(400, "input fields must not be empty")
         }
         if (!isValidObjectId(userId)) {
@@ -212,7 +211,7 @@ const ChangePassword = Asynchandler(async (req, res) => {
             userId,
             {
                 $set: {
-                    password: newPassord
+                    password: newPassword
                 }
             },
             {
@@ -236,7 +235,7 @@ const ChangePassword = Asynchandler(async (req, res) => {
 
 const UploadAvatar = Asynchandler(async (req, res) => {
     try {
-        const avatar = req.file?.path;
+        const {avatar} = req.file?.path;
         const userId = req.user?._id
         const avatarpath = "";
         if (avatar) {

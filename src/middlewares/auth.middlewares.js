@@ -7,7 +7,7 @@ dotenv.config()
 export const VerifyJWT = async (req, res, next) => {
    try {
      const bearer = req.headers && req.headers.authorization ? req.headers.authorization : "";
-     const token = req.cookies?.AccessToken || (bearer.startsWith("Bearer ") ? bearer.replace("Bearer ", "") : "");
+     const token = req.cookies?.accessToken || (bearer.startsWith("Bearer ") ? bearer.replace("Bearer ", "") : "");
      if(!token){
          throw new ApiError(404,"Unathorized ! token not found")
      }

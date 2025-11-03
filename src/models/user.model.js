@@ -28,6 +28,10 @@ const userSchema=new mongoose.Schema({
         enum:['user','admin'],
         default:'user'
     },
+    onboarded:{
+        type:Boolean,
+        default:false
+    },
     password:{
         type:String,
         required:[true,"password is required"],
