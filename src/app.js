@@ -24,11 +24,11 @@ import admindashRouter from "./routers/admindashboard.route.js"
 import userdashRouter from "./routers/userdashboard.route.js"
 import paymentRouter from "./routers/payment.route.js"
 
-app.use('api/v1/user',userRouter)
-app.use('api/v1/order',orderRouter)
-app.use('api/v1/admindash',admindashRouter)
-app.use('api/v1/userdash',userdashRouter)
-app.use('api/v1/payment',paymentRouter)
+app.use('/api/v1/user',userRouter)
+app.use('/api/v1/order',orderRouter)
+app.use('/api/v1/admindash',admindashRouter)
+app.use('/api/v1/userdash',userdashRouter)
+app.use('/api/v1/payment',paymentRouter)
 
 app.get("/", (req,res)=>{
     res.status(200).json({message:"Hello Welcome to LoundryService"})
