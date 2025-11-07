@@ -1,9 +1,10 @@
 import express from "express";
 import { VerifyJWT } from "../middlewares/auth.middlewares.js";
-import { DeliveredOrders, PaymentHistory, PendingOrders, PickedOrders, TotalorderStatusCount, WashedOrders } from "../controllers/userdashboard.controller.js";
+import { DeliveredOrders, getAllOrders, PaymentHistory, PendingOrders, PickedOrders, TotalorderStatusCount, WashedOrders } from "../controllers/userdashboard.controller.js";
 const router=express.Router()
 
 router.route('/totalorderstatuscount').get(VerifyJWT,TotalorderStatusCount)
+router.route('/allorders').get(VerifyJWT,getAllOrders)
 router.route('/pendingorders').get(VerifyJWT,PendingOrders)
 router.route('/pickedorders').get(VerifyJWT,PickedOrders)
 router.route('/washedorders').get(VerifyJWT,WashedOrders)

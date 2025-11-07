@@ -37,7 +37,25 @@ const TotalorderStatusCount = Asynchandler(async (req, res) => {
         )
     }
 })
-
+const getAllOrders=Asynchandler(async(req,res)=>{
+    try {
+        const userId=req.user?._id; 
+        //! Validate and check for user role and send all orders of this user
+        if (!isValidObjectId(userId)) {
+            throw new ApiError(401, "Unauthorized ! Invalid userId")
+        }
+        const allOrders=await Order.find({userid:userId})
+        return res.status(200)
+        .json(
+            new ApiResponse(200,allOrders,"All Orders fetched successfully")
+        )
+    }
+    catch (error) {
+        res.status(500).json(
+            new ApiError(500, error?.message)
+        )
+    }
+})
 const PendingOrders = Asynchandler(async (req, res) => {
     try {
         const userId = req.user?._id;
@@ -164,5 +182,6 @@ export{
     PickedOrders,
     WashedOrders,
     DeliveredOrders,
-    PaymentHistory
+    PaymentHistory,
+    getAllOrders
 }

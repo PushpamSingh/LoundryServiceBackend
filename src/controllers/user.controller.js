@@ -49,9 +49,9 @@ const Registeruser = Asynchandler(async (req, res) => {
             fullName,
             email,
             phone,
-            password
+            password,
         })
-        await user.save({ validateBeforeSave: false })
+        // await user.save({ validateBeforeSave: false })
 
         if (!user) {
             throw new ApiError(400, "User not created")

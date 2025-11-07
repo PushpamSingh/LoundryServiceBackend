@@ -40,11 +40,11 @@ const orderSchema = new mongoose.Schema({
    },
    pickupTime: {
     type: Date,
-    required: true
+   //  required: true
    },
    deliveryTime:{
       type:Date,
-      required:true
+      // required:true
    },
    userid: {
       type: mongoose.Schema.Types.ObjectId,

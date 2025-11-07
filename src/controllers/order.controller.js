@@ -45,9 +45,9 @@ const Createorder = Asynchandler(async (req, res) => {
             nearby: nearby,
             userid: userId,
             orderId: orderId,
-            instructions: instructions
+            instructions: instructions || ""
         })
-        await createOrder.save({ validateBeforeSave: false })
+        // await createOrder.save({ validateBeforeSave: false })
 
         if (!createOrder) {
             throw new ApiError(400, "creating Order Failled!!!")
@@ -61,26 +61,15 @@ const Createorder = Asynchandler(async (req, res) => {
         if (!orderitem || typeof (orderitem) !== "object") {
             throw new ApiError(400, "please provide some orderItem")
         }
+        const items = typeof orderitem === "string" ? JSON.parse(orderitem) : orderitem;
+        // console.log("Items: ", items);
+
         const newObj = {};
         let totalprice = 0;
-        for (const [key, value] of Object.entries(orderitem)) {
-            if (typeof (key) !== "string" || typeof (value) !== "number" || value <= 0) {
-                throw new ApiError(400, "please provide valid details")
-            }
-            newObj[key] = value
-            if (key === "Shirts") {
-                totalprice += (value * 15)
-            } else if (key === "Pants") {
-                totalprice += (value * 15)
-            } else if (key === "Dresses") {
-                totalprice += (value * 20)
-            } else if (key === "Suits") {
-                totalprice += (value * 35)
-            } else if (key === "Bedsheets") {
-                totalprice += (value * 10)
-            } else if (key === "BlanketsOrQuilts") {
-                totalprice += (value * 40)
-            }
+        for (const [key, value] of Object.entries(items)) {
+            newObj[key] = parseInt(value)
+            const prices = { shirt: 15, pants: 15, dresses: 20, suits: 35, bedsheets: 10, blankets: 40 };
+            totalprice += prices[key] ? parseInt(value) * prices[key] : 0;
         }
 
         const createOrderItem = await Orderitem.create({
@@ -89,7 +78,7 @@ const Createorder = Asynchandler(async (req, res) => {
             totalitem: newObj,
             totalprice: totalprice
         })
-        await createOrderItem.save({ validateBeforeSave: false })
+        // await createOrderItem.save({ validateBeforeSave: false })
 
         if (!createOrderItem) {
             throw new ApiError(400, "creating Order Item Failled!!!")
@@ -114,7 +103,7 @@ const ConfirmOrder = Asynchandler(async (req, res) => {
     try {
         const { paymentmethod } = req.body;
         const { orderId } = req.params;
-        const userId = req.user?.id;
+        const userId = req.user?._id;
         if (!paymentmethod) {
             throw new ApiError(400, "Choose payment method!!")
         }
@@ -125,16 +114,20 @@ const ConfirmOrder = Asynchandler(async (req, res) => {
             throw new ApiError(400, "Provide OrderID to track the order!!");
         }
 
-        const ExistOrder = await Order.findOne({
-            userid: userId,
-            _id: orderId
-        })
+        const ExistOrder = await Order.findOneAndUpdate(
+            {
+                userid: userId,
+                _id: orderId
+            },
+            {
+                orderCompleted: true,
+                paymentmethod: paymentmethod
+            },
+            { new: true }
+        )
         if (!ExistOrder) {
             throw new ApiError(404, "Order Not Exist!!")
         }
-        ExistOrder.paymentmethod = paymentmethod;
-        await ExistOrder.save({ validateBeforeSave: false })
-
         return res.status(200)
             .json(
                 new ApiResponse(200, ExistOrder, "order confirmed")
@@ -307,7 +300,7 @@ const Updatepickuptime = Asynchandler(async (req, res) => {
                 $and: [
                     { _id: orderSchemaId },
                     { orderId: orderId },
-                    { userid: userId },
+                    { userid: existingOrder.userid },
                     { orderCompleted: true }
                 ]
             },
@@ -392,7 +385,7 @@ const Updatedeliverytime = Asynchandler(async (req, res) => {
                 $and: [
                     { _id: orderSchemaId },
                     { orderId: orderId },
-                    { userid: userId }
+                    { userid: existingOrder.userid }
                 ]
             },
             {
@@ -440,14 +433,23 @@ const Updatestatus = Asynchandler(async (req, res) => {
         if (!orderId) {
             throw new ApiError(400, "orderId is required to cancel the order")
         }
-
+        const existingOrder = await Order.findOne({
+            $and: [
+                { _id: orderSchemaId },
+                { orderId: orderId },
+                { orderCompleted: true }
+            ]
+        });
+        if (!existingOrder) {
+            throw new ApiError(404, "order not found!! or Failed to fetch order")
+        }
         if (status === "pending" || status === "picked" || status === "washed" || status === "delivered") {
             const updatedOrder = await Order.findOneAndUpdate(
                 {
                     $and: [
                         { _id: orderSchemaId },
                         { orderId: orderId },
-                        { userid: userId },
+                        { userid: existingOrder.userid },
                         { orderCompleted: true }
                     ]
                 },
@@ -455,7 +457,8 @@ const Updatestatus = Asynchandler(async (req, res) => {
                     $set: {
                         status: status
                     }
-                }
+                },
+                {new: true}
             )
 
             if (!updatedOrder) {
@@ -478,7 +481,7 @@ const Updatestatus = Asynchandler(async (req, res) => {
 })
 const GetOneOrder = Asynchandler(async (req, res) => {
     try {
-         const userId = req.user?._id;
+        const userId = req.user?._id;
         const { orderSchemaId } = req.params;
         if (!isValidObjectId(userId)) {
             throw new ApiError(400, "Unauthorized ! Invalid userId")
@@ -487,16 +490,16 @@ const GetOneOrder = Asynchandler(async (req, res) => {
             throw new ApiError(400, "Unauthorized ! Invalid orderSchemaId")
         }
         const order = await Order.findOne({
-            _id:orderSchemaId,
-            userid:userId
+            _id: orderSchemaId,
+            userid: userId
         })
-        if(!order){
-            throw new ApiError(404,"Order Not Found")
+        if (!order) {
+            throw new ApiError(404, "Order Not Found")
         }
         return res.status(200)
-        .json(
-            new ApiResponse(200,order,"Order fetched successfuly")
-        )
+            .json(
+                new ApiResponse(200, order, "Order fetched successfuly")
+            )
 
     } catch (error) {
         return res.status(500).json(
