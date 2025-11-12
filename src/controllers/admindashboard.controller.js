@@ -19,7 +19,7 @@ const TotalorderStatusCountandRevenue = Asynchandler(async (req, res) => {
         }
 
         //?Find the total order from status count
-        const Orders = await Order.find({orderCompleted:true});
+        const Orders = await Order.find({ orderCompleted: true });
         const StatusCount = {}
         for (let order of Orders) {
             StatusCount[order?.status] = (StatusCount[order?.status] || 0) + 1
@@ -55,6 +55,48 @@ const TotalorderStatusCountandRevenue = Asynchandler(async (req, res) => {
     }
 })
 
+const getAllOrders = Asynchandler(async (req, res) => {
+    try {
+        const userId = req.user?._id;
+        //! Validate and check for user role and send all orders of this user
+        if (!isValidObjectId(userId)) {
+            throw new ApiError(401, "Unauthorized ! Invalid userId")
+        }
+        const user = await User.findById(userId);
+        if (user.role !== "admin") {
+            throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
+        }
+        const allOrders = await Order.find()
+        if (allOrders.length === 0) {
+            return res.status(200).json(
+                new ApiResponse(200, [], "No orders found")
+            )
+        }
+        const orderitem = await Orderitem.find()
+        // atach order items to their respective orders
+        const itemsByOrder = {};
+        orderitem.forEach(item => {
+            if (!itemsByOrder[item.orderid]) {
+                itemsByOrder[item.orderid] = [];
+            }
+            itemsByOrder[item.orderid].push(item);
+        })
+        const ordersWithItems = allOrders.map(order => ({
+            ...order.toObject(),
+            items: itemsByOrder[order._id] || [],
+        }))
+        return res.status(200)
+            .json(
+                new ApiResponse(200, ordersWithItems, "All Orders fetched successfully")
+            )
+    }
+    catch (error) {
+        res.status(500).json(
+            new ApiError(500, error?.message)
+        )
+    }
+})
+
 const PendingOrders = Asynchandler(async (req, res) => {
     try {
         const userId = req.user?._id;
@@ -67,17 +109,37 @@ const PendingOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const pendingOrders=await Order.find({
-            $and:[
-                {status:'pending'},
-                {orderCompleted:true}
+        const pendingOrders = await Order.find({
+            $and: [
+                { status: 'pending' },
+                { orderCompleted: true }
             ]
         })
-
+        if (pendingOrders.length === 0) {
+            return res.status(200).json(
+                new ApiResponse(200, [], "No pending orders found")
+            )
+        }
+        // Fetch order items for pending orders
+        const OrderIds = pendingOrders.map(order => order._id);
+        const orderItems = await Orderitem.find({ orderid: { $in: OrderIds } });
+        // Attach order items to their respective orders
+        const itemsByOrder = {};
+        orderItems.forEach(item => {
+            if (!itemsByOrder[item.orderid]) {
+                itemsByOrder[item.orderid] = [];
+            }
+            itemsByOrder[item.orderid].push(item);
+        })
+        const ordersWithItems = pendingOrders.map(order => ({
+            ...order.toObject(),
+            items: itemsByOrder[order._id] || [],
+        }))
+        // Return orders with their items
         return res.status(200)
-        .json(
-            new ApiResponse(200,pendingOrders,"Pending Orders fetched successfuly")
-        )
+            .json(
+                new ApiResponse(200, ordersWithItems, "Pending Orders fetched successfuly")
+            )
     } catch (error) {
         return res.status(500).json(
             new ApiError(500, error?.message)
@@ -97,17 +159,37 @@ const PickedOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const pickedOrders=await Order.find({
-            $and:[
-                {status:'picked'},
-                {orderCompleted:true}
+        const pickedOrders = await Order.find({
+            $and: [
+                { status: 'picked' },
+                { orderCompleted: true }
             ]
-    })         
-
+        })
+        if (pickedOrders.length === 0) {
+            return res.status(200).json(
+                new ApiResponse(200, [], "No picked orders found")
+            )
+        }
+        // Fetch order items for pending orders
+        const OrderIds = pickedOrders.map(order => order._id);
+        const orderItems = await Orderitem.find({ orderid: { $in: OrderIds } });
+        // Attach order items to their respective orders
+        const itemsByOrder = {};
+        orderItems.forEach(item => {
+            if (!itemsByOrder[item.orderid]) {
+                itemsByOrder[item.orderid] = [];
+            }
+            itemsByOrder[item.orderid].push(item);
+        })
+        const ordersWithItems = pickedOrders.map(order => ({
+            ...order.toObject(),
+            items: itemsByOrder[order._id] || [],
+        }))
+        // Return orders with their items
         return res.status(200)
-        .json(
-            new ApiResponse(200,pickedOrders,"Picked Orders fetched successfuly")
-        )
+            .json(
+                new ApiResponse(200, ordersWithItems, "Pending Orders fetched successfuly")
+            )
     } catch (error) {
         return res.status(500).json(
             new ApiError(500, error?.message)
@@ -126,17 +208,37 @@ const WashedOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const washedOrders=await Order.find({
-            $and:[
-                {status:'washed'},
-                {orderCompleted:true}
+        const washedOrders = await Order.find({
+            $and: [
+                { status: 'washed' },
+                { orderCompleted: true }
             ]
-    })
-
+        })
+        if (washedOrders.length === 0) {
+            return res.status(200).json(
+                new ApiResponse(200, [], "No washed orders found")
+            )
+        }
+        // Fetch order items for pending orders
+        const OrderIds = washedOrders.map(order => order._id);
+        const orderItems = await Orderitem.find({ orderid: { $in: OrderIds } });
+        // Attach order items to their respective orders
+        const itemsByOrder = {};
+        orderItems.forEach(item => {
+            if (!itemsByOrder[item.orderid]) {
+                itemsByOrder[item.orderid] = [];
+            }
+            itemsByOrder[item.orderid].push(item);
+        })
+        const ordersWithItems = washedOrders.map(order => ({
+            ...order.toObject(),
+            items: itemsByOrder[order._id] || [],
+        }))
+        // Return orders with their items
         return res.status(200)
-        .json(
-            new ApiResponse(200,washedOrders,"Washed Orders fetched successfuly")
-        )
+            .json(
+                new ApiResponse(200, ordersWithItems, "Pending Orders fetched successfuly")
+            )
     } catch (error) {
         return res.status(500).json(
             new ApiError(500, error?.message)
@@ -155,17 +257,37 @@ const DeliveredOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const deliveredOrders=await Order.find({
-            $and:[
-                {status:'delivered'},
-                {orderCompleted:true}
+        const deliveredOrders = await Order.find({
+            $and: [
+                { status: 'delivered' },
+                { orderCompleted: true }
             ]
         })
-
+        if (deliveredOrders.length === 0) {
+            return res.status(200).json(
+                new ApiResponse(200, [], "No delivered orders found")
+            )
+        }
+        // Fetch order items for pending orders
+        const OrderIds = deliveredOrders.map(order => order._id);
+        const orderItems = await Orderitem.find({ orderid: { $in: OrderIds } });
+        // Attach order items to their respective orders
+        const itemsByOrder = {};
+        orderItems.forEach(item => {
+            if (!itemsByOrder[item.orderid]) {
+                itemsByOrder[item.orderid] = [];
+            }
+            itemsByOrder[item.orderid].push(item);
+        })
+        const ordersWithItems = deliveredOrders.map(order => ({
+            ...order.toObject(),
+            items: itemsByOrder[order._id] || [],
+        }))
+        // Return orders with their items
         return res.status(200)
-        .json(
-            new ApiResponse(200,deliveredOrders,"Delivered Orders fetched successfuly")
-        )
+            .json(
+                new ApiResponse(200, ordersWithItems, "Pending Orders fetched successfuly")
+            )
     } catch (error) {
         return res.status(500).json(
             new ApiError(500, error?.message)
@@ -184,28 +306,78 @@ const CanceledOrders = Asynchandler(async (req, res) => {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
 
-        const canceledOrders=await Order.find({
-            $and:[
-                {status:'canceled'},
-                {orderCompleted:true}
+        const canceledOrders = await Order.find({
+            $and: [
+                { status: 'canceled' },
+                { orderCompleted: true }
             ]
         })
+        if (canceledOrders.length === 0) {
+            return res.status(200).json(
+                new ApiResponse(200, [], "No canceled orders found")
+            )
+        }
+        // Fetch order items for pending orders
+        const OrderIds = canceledOrders.map(order => order._id);
+        const orderItems = await Orderitem.find({ orderid: { $in: OrderIds } });
+        // Attach order items to their respective orders
+        const itemsByOrder = {};
+        orderItems.forEach(item => {
+            if (!itemsByOrder[item.orderid]) {
+                itemsByOrder[item.orderid] = [];
+            }
+            itemsByOrder[item.orderid].push(item);
+        })
+        const ordersWithItems = canceledOrders.map(order => ({
+            ...order.toObject(),
+            items: itemsByOrder[order._id] || [],
+        }))
+        // Return orders with their items
         return res.status(200)
-        .json(
-            new ApiResponse(200,canceledOrders,"Canceled Orders fetched successfuly")
-        )
+            .json(
+                new ApiResponse(200, ordersWithItems, "Pending Orders fetched successfuly")
+            )
     } catch (error) {
         return res.status(500).json(
             new ApiError(500, error?.message)
         )
     }
 })
-
+const UpdateStatus=Asynchandler(async(req,res)=>{
+    try {
+        const userId=req.user?._id;
+        const {orderId,newStatus}=req.body    
+        //! Validate and check for user role and send all orders of all users which is in canceled status
+        if(!isValidObjectId(userId)){
+            throw new ApiError(401,"Unauthorized ! Invalid userId")
+        }
+        const user=await User.findById(userId);
+        if(user.role!=="admin"){
+            throw new ApiError(403,"Unauthorized !! not allowed to fetch this api")
+        }
+        const order=await Order.findOne({orderId:orderId})
+        if(!order){
+            throw new ApiError(404,"Order not found with this orderId")
+        }   
+        order.status=newStatus
+        await order.save()
+        return res.status(200).json(
+            new ApiResponse(200,order,"Order status updated successfully")
+        )
+    } catch (error) {
+        return res.status(500).json(
+            new ApiError(500,error?.message)
+        )
+    }
+}   
+)
 export {
     TotalorderStatusCountandRevenue,
+    getAllOrders,
     PendingOrders,
     PickedOrders,
     WashedOrders,
     DeliveredOrders,
-    CanceledOrders
+    CanceledOrders,
+    UpdateStatus
 }
