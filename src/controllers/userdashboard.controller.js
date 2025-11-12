@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { Order } from "../models/order.model.js";
 import { isValidObjectId } from "mongoose";
 import { Receipt } from "../models/receipt.model.js";
+import { Orderitem } from "../models/orderitems.model.js";
 
 const TotalorderStatusCount = Asynchandler(async (req, res) => {
     try {
@@ -45,9 +46,10 @@ const getAllOrders=Asynchandler(async(req,res)=>{
             throw new ApiError(401, "Unauthorized ! Invalid userId")
         }
         const allOrders=await Order.find({userid:userId})
+        const orderitem=await Orderitem.find({userid:userId})
         return res.status(200)
         .json(
-            new ApiResponse(200,allOrders,"All Orders fetched successfully")
+            new ApiResponse(200,{allOrders,orderitem},"All Orders fetched successfully")
         )
     }
     catch (error) {
@@ -71,10 +73,38 @@ const PendingOrders = Asynchandler(async (req, res) => {
             ]
         })
 
-        return res.status(200)
-        .json(
-            new ApiResponse(200,pendingOrders,"Pending Orders fetched successfully")
-        )
+          if (pendingOrders.length === 0) {
+            return res.status(200).json(
+                new ApiResponse(200, [], "No pending orders found")
+            );
+        }
+         // 🔸 Step 3: Collect all orderIds
+        const orderIds = pendingOrders.map(order => order.orderId);
+  
+        // 🔸 Step 4: Fetch all related order items at once
+        const orderItems = await Orderitem.find({
+            orderid: { $in: orderIds },
+            userid: userId,
+        });
+
+        // 🔸 Step 5: Group items by orderId
+        const itemsByOrder = {};
+
+       orderItems.forEach(item => {
+            if (!itemsByOrder[item.orderid]) {
+                itemsByOrder[item.orderid] = [];
+            }
+            itemsByOrder[item.orderid].push(item);
+        });
+         // 🔸 Step 6: Attach items to corresponding order
+        const ordersWithItems = pendingOrders.map(order => ({
+            ...order.toObject(),
+            items: itemsByOrder[order.orderId] || [],
+        }));
+          // 🔸 Step 7: Return response
+        return res.status(200).json(
+            new ApiResponse(200, ordersWithItems, "Pending Orders fetched successfully")
+        );
     } catch (error) {
         res.status(500).json(
             new ApiError(500, error?.message)
@@ -96,10 +126,36 @@ const PickedOrders=Asynchandler(async(req,res)=>{
                 {orderCompleted:true}
             ]
         })
-
+         
+          if(pickedOrders.length===0){
+            return res.status(200).json(
+                new ApiResponse(200, [], "No picked orders found")
+            )
+          }
+           // 🔸 Step 3: Collect all orderIds
+          const orderIds= pickedOrders.map(order=>order.orderId);
+            // 🔸 Step 4: Fetch all related order items at once
+            const orderItems=await Orderitem.find({
+                orderid:{$in:orderIds},
+                userid:userId,
+            })
+            // 🔸 Step 5: Group items by orderId
+            const itemsByOrder={};
+            orderItems.forEach(item=>{
+                if(!itemsByOrder[item.orderid]){
+                    itemsByOrder[item.orderid]=[];
+                }
+                itemsByOrder[item.orderid].push(item);
+            })
+            // 🔸 Step 6: Attach items to corresponding order
+            const ordersWithItems=pickedOrders.map(order=>({
+                ...order.toObject(),
+                items:itemsByOrder[order.orderId] || [],
+            }))
+            // 🔸 Step 7: Return response
         return res.status(200)
         .json(
-            new ApiResponse(200,pickedOrders,"Picked Orders fetched successfully")
+            new ApiResponse(200,ordersWithItems,"Picked Orders fetched successfully")
         )
     } catch (error) {
          res.status(500).json(
@@ -121,10 +177,35 @@ const WashedOrders=Asynchandler(async(req,res)=>{
                 {orderCompleted:true}
             ]
         })
-
+        if(washedOrders.length===0){
+            return res.status(200).json(
+                new ApiResponse(200, [], "No washed orders found")
+            )
+          }
+            // 🔸 Step 3: Collect all orderIds
+            const orderIds= washedOrders.map(order=>order.orderId);
+            // 🔸 Step 4: Fetch all related order items at once
+            const orderItems=await Orderitem.find({
+                orderid:{$in:orderIds},
+                userid:userId,
+            })
+            // 🔸 Step 5: Group items by orderId
+            const itemsByOrder={};
+            orderItems.forEach(item=>{
+                if(!itemsByOrder[item.orderid]){
+                    itemsByOrder[item.orderid]=[];
+                }
+                itemsByOrder[item.orderid].push(item);
+            })
+            // 🔸 Step 6: Attach items to corresponding order
+            const ordersWithItems=washedOrders.map(order=>({
+                ...order.toObject(),
+                items:itemsByOrder[order.orderId] || [],
+            }))
+            // 🔸 Step 7: Return response
         return res.status(200)
         .json(
-            new ApiResponse(200,washedOrders,"Washed Orders fetched successfully")
+            new ApiResponse(200,ordersWithItems,"Washed Orders fetched successfully")
         )
     } catch (error) {
          res.status(500).json(
@@ -146,10 +227,37 @@ const DeliveredOrders=Asynchandler(async(req,res)=>{
                 {orderCompleted:true}
             ]
         })
+            if(deliveredOrders.length===0){ 
+            return res.status(200).json(
+                new ApiResponse(200, [], "No delivered orders found")
+            )
+          }
+
+          // 🔸 Step 3: Collect all orderIds
+            const orderIds= deliveredOrders.map(order=>order.orderId);
+            // 🔸 Step 4: Fetch all related order items at once
+            const orderItems=await Orderitem.find({
+                orderid:{$in:orderIds},
+                userid:userId,
+            })
+            // 🔸 Step 5: Group items by orderId
+            const itemsByOrder={};
+            orderItems.forEach(item=>{
+                if(!itemsByOrder[item.orderid]){    
+                    itemsByOrder[item.orderid]=[];
+                }
+                itemsByOrder[item.orderid].push(item);
+            })
+            // 🔸 Step 6: Attach items to corresponding order
+            const ordersWithItems=deliveredOrders.map(order=>({
+                ...order.toObject(),
+                items:itemsByOrder[order.orderId] || [],
+            }))
+            // 🔸 Step 7: Return response
 
         return res.status(200)
         .json(
-            new ApiResponse(200,deliveredOrders,"Delivered Orders fetched successfully")
+            new ApiResponse(200,ordersWithItems,"Delivered Orders fetched successfully")
         )
     } catch (error) {
          res.status(500).json(
