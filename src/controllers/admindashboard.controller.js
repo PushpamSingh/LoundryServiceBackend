@@ -24,7 +24,9 @@ const TotalorderStatusCountandRevenue = Asynchandler(async (req, res) => {
         for (let order of Orders) {
             StatusCount[order?.status] = (StatusCount[order?.status] || 0) + 1
         }
+        StatusCount["totalOrders"] = Orders.length;
         //!Find the total orderItems
+        const orderIds = Orders.map(order => order.orderId);
         const totalItemPrice = await Orderitem.aggregate([
             {
                 $group: {
@@ -54,7 +56,58 @@ const TotalorderStatusCountandRevenue = Asynchandler(async (req, res) => {
         )
     }
 })
+const TrackOrder = Asynchandler(async (req, res) => {
+    try {
+        // console.log("body: ",req.body);
+        
+        const { orderId } = req.body
+        const userId = req.user?._id
+        //?send name, phone, total address, pickupTime,deliveryTime,orderId,paymetmethod,{itemname,totalitem} to the user
+        //!calculate the price of total item on basis of totalitems of itemname
 
+        if (!isValidObjectId(userId)) {
+            throw new ApiError(400, "Unauthorized ! Invalid userId")
+        }
+        if (!orderId) {
+            throw new ApiError(400, "Provide OrderID to track the order!!");
+        }
+        const order = await Order.findOne({
+            $and: [
+                { orderId: orderId },
+                { orderCompleted: true }
+            ]
+        })
+
+        if (!order) {
+            throw new ApiError(404, "Invalid orderID !! order not found")
+        }
+        const orderitemDetails = await Orderitem.findOne({
+            $and: [
+                { orderid: order?._id }
+            ]
+        })
+
+        if (!orderitemDetails) {
+            throw new ApiError(404, "Invalid order Details !! orderItem not found")
+        }
+        // console.log("order details: ",orderitemDetails.totalitem.get("shirt"));
+        
+        let totalitemcount=0;
+        for(const value of orderitemDetails.totalitem.values()){
+            totalitemcount+=value;
+        }
+        // console.log("totalitemcount: ",totalitemcount);
+        
+        return res.status(200)
+            .json(
+                new ApiResponse(200, { order, orderitemDetails,totalitemcount }, "Order Details Fetched Successfully")
+            )
+    } catch (error) {
+        return res.status(500).json(
+            new ApiError(500, error?.message)
+        )
+    }
+})
 const getAllOrders = Asynchandler(async (req, res) => {
     try {
         const userId = req.user?._id;
@@ -66,7 +119,7 @@ const getAllOrders = Asynchandler(async (req, res) => {
         if (user.role !== "admin") {
             throw new ApiError(403, "Unauthorized !! not allowed to fetch this api")
         }
-        const allOrders = await Order.find()
+        const allOrders = await Order.find({orderCompleted: true})
         if (allOrders.length === 0) {
             return res.status(200).json(
                 new ApiResponse(200, [], "No orders found")
@@ -346,7 +399,9 @@ const CanceledOrders = Asynchandler(async (req, res) => {
 const UpdateStatus=Asynchandler(async(req,res)=>{
     try {
         const userId=req.user?._id;
-        const {orderId,newStatus}=req.body    
+        const {orderId,newStatus}=req.body 
+        // console.log("Status: ",orderId,newStatus);
+           
         //! Validate and check for user role and send all orders of all users which is in canceled status
         if(!isValidObjectId(userId)){
             throw new ApiError(401,"Unauthorized ! Invalid userId")
@@ -355,12 +410,26 @@ const UpdateStatus=Asynchandler(async(req,res)=>{
         if(user.role!=="admin"){
             throw new ApiError(403,"Unauthorized !! not allowed to fetch this api")
         }
-        const order=await Order.findOne({orderId:orderId})
+        const order=await Order.findOneAndUpdate(
+            {
+                _id:orderId
+            },
+            {
+                $set:{
+                    status:newStatus
+                }
+            },
+            {
+                new:true
+            }
+        )
+        // console.log("order:",order);
+        
         if(!order){
             throw new ApiError(404,"Order not found with this orderId")
-        }   
-        order.status=newStatus
-        await order.save()
+        }  
+        // console.log("order:",order.status);
+
         return res.status(200).json(
             new ApiResponse(200,order,"Order status updated successfully")
         )
@@ -373,6 +442,7 @@ const UpdateStatus=Asynchandler(async(req,res)=>{
 )
 export {
     TotalorderStatusCountandRevenue,
+    TrackOrder,
     getAllOrders,
     PendingOrders,
     PickedOrders,

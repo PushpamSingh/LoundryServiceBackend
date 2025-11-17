@@ -5,7 +5,7 @@ const router=express.Router()
 
 router.route('/createorder').post(VerifyJWT,Createorder)
 router.route('/confirmorder/:orderId').put(VerifyJWT,ConfirmOrder)
-router.route('/trackorder').get(VerifyJWT,TrackOrder)
+router.route('/trackorder').post(VerifyJWT,TrackOrder)
 router.route('/canceleorder/:orderSchemaId').delete(VerifyJWT,CanceleOrder)
 router.route('/updatepickuptime/:orderSchemaId').put(VerifyJWT,Updatepickuptime)
 router.route('/updatedeliverytime/:orderSchemaId').put(VerifyJWT,Updatedeliverytime)

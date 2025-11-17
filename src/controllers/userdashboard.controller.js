@@ -24,6 +24,7 @@ const TotalorderStatusCount = Asynchandler(async (req, res) => {
         for (let order of Orders) {
             StatusCount[order?.status] = (StatusCount[order?.status] || 0) + 1
         }
+        StatusCount["totalOrders"] = Orders.length;
         return res.status(200)
             .json(
                 new ApiResponse(
@@ -45,7 +46,7 @@ const getAllOrders = Asynchandler(async (req, res) => {
         if (!isValidObjectId(userId)) {
             throw new ApiError(401, "Unauthorized ! Invalid userId")
         }
-        const allOrders = await Order.find({ userid: userId })
+        const allOrders = await Order.find({ userid: userId,orderCompleted:true })
         if (allOrders.length === 0) {
             return res.status(200).json(
                 new ApiResponse(200, [], "No orders found")

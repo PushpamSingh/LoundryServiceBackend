@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { Asynchandler } from "../utils/Asynchandler.js";
 import { User } from "../models/user.model.js";
 import { Orderitem } from "../models/orderitems.model.js";
+import { parse } from "dotenv";
 
 const Createorder = Asynchandler(async (req, res) => {
     try {
@@ -13,11 +14,16 @@ const Createorder = Asynchandler(async (req, res) => {
         const userId = req.user?._id;
         //!Generate OrderID (ORD-001)
         //?calculate price of a item from orderitem and create new document for orderitem
+        console.log("OrderDetails: ", req.body);
+
 
         if (!isValidObjectId(userId)) {
             throw new ApiError(401, "Unauthorized ! Invalid userId")
         }
-        if ([orderitem, name, phone, area, alternatephone, housenumber,
+        if (!orderitem) {
+            throw new ApiError(400, "Please provide orderitem details")
+        }
+        if ([name, phone, area, alternatephone, housenumber,
             city, state, pincode, nearby].some((field) => field === "")) {
             throw new ApiError(400, "Fields must not be empty")
         }
@@ -28,25 +34,41 @@ const Createorder = Asynchandler(async (req, res) => {
         }
 
         //!Generate custom orderId
-        const orderCount = await Order.countDocuments();
-        const nextOrderCount = orderCount + 1;
-        const paddedNumber = String(nextOrderCount).padStart(3, "0");
-        const orderId = `ORD-${paddedNumber}`
+        let orderId;
+        let createOrder;
+        while (true) {
+            const lastOrder = await Order.findOne().sort({ orderId: -1 }); 
 
-        const createOrder = await Order.create({
-            name: name,
-            phone: phone,
-            area: area,
-            alternatephone: alternatephone,
-            housenumber: housenumber,
-            city: city,
-            state: state,
-            pincode: pincode,
-            nearby: nearby,
-            userid: userId,
-            orderId: orderId,
-            instructions: instructions || ""
-        })
+            let nextOrderCount = 1;
+            if (lastOrder) {
+                const lastNumber = parseInt(lastOrder.orderId.split("-")[1]);
+                nextOrderCount = lastNumber + 1;
+            }
+
+            const padded = String(nextOrderCount).padStart(3, "0");
+            orderId = `ORD-${padded}`;
+
+            try {
+                createOrder= await Order.create({
+                    name: name,
+                    phone: phone,
+                    area: area,
+                    alternatephone: alternatephone,
+                    housenumber: housenumber,
+                    city: city,
+                    state: state,
+                    pincode: pincode,
+                    nearby: nearby,
+                    userid: userId,
+                    orderId: orderId,
+                    instructions: instructions || ""
+                });
+                break;
+            } catch (err) {
+                if (err.code === 11000) continue;
+                throw err;
+            }
+        }
         // await createOrder.save({ validateBeforeSave: false })
 
         if (!createOrder) {
@@ -140,6 +162,8 @@ const ConfirmOrder = Asynchandler(async (req, res) => {
 })
 const TrackOrder = Asynchandler(async (req, res) => {
     try {
+        // console.log("body: ", req.body);
+
         const { orderId } = req.body
         const userId = req.user?._id
         //?send name, phone, total address, pickupTime,deliveryTime,orderId,paymetmethod,{itemname,totalitem} to the user
@@ -172,10 +196,17 @@ const TrackOrder = Asynchandler(async (req, res) => {
         if (!orderitemDetails) {
             throw new ApiError(404, "Invalid order Details !! orderItem not found")
         }
+        // console.log("order details: ",orderitemDetails.totalitem.get("shirt"));
+
+        let totalitemcount = 0;
+        for (const value of orderitemDetails.totalitem.values()) {
+            totalitemcount += value;
+        }
+        // console.log("totalitemcount: ",totalitemcount);
 
         return res.status(200)
             .json(
-                new ApiResponse(200, { order, orderitemDetails }, "Order Details Fetched Successfully")
+                new ApiResponse(200, { order, orderitemDetails, totalitemcount }, "Order Details Fetched Successfully")
             )
     } catch (error) {
         return res.status(500).json(
@@ -458,7 +489,7 @@ const Updatestatus = Asynchandler(async (req, res) => {
                         status: status
                     }
                 },
-                {new: true}
+                { new: true }
             )
 
             if (!updatedOrder) {
@@ -496,9 +527,14 @@ const GetOneOrder = Asynchandler(async (req, res) => {
         if (!order) {
             throw new ApiError(404, "Order Not Found")
         }
+
+        const orderitemDetails = await Orderitem.findOne({
+            orderid: order?._id,
+            userid: userId
+        })
         return res.status(200)
             .json(
-                new ApiResponse(200, order, "Order fetched successfuly")
+                new ApiResponse(200, { order, orderitemDetails }, "Order fetched successfuly")
             )
 
     } catch (error) {

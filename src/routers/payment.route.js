@@ -5,6 +5,6 @@ import { CreateRZPorder, VerifyRazorpay } from '../controllers/payment.controlle
 const router=express.Router()
 
 router.route('/createrzporder').post(VerifyJWT,CreateRZPorder)
-router.route('/verifyrazorpay').get(VerifyJWT,VerifyRazorpay)
+router.route('/verifyrazorpay').post(VerifyJWT,VerifyRazorpay)
 
 export default router

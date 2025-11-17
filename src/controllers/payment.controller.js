@@ -8,6 +8,7 @@ import { isValidObjectId } from "mongoose";
 import { Orderitem } from "../models/orderitems.model.js";
 import dotenv from "dotenv"
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { log } from "console";
 dotenv.config()
 const Razorpay_Instance = new Razorpay({
   key_id: process.env.RAZORPAY_API_KEY,
@@ -35,7 +36,7 @@ const CreateRZPorder = Asynchandler(async (req, res) => {
 
     const ExistOrderItem = await Orderitem.findOne({
       $and: [
-        { orderid: ExistOrder?.orderId },
+        { orderid: ExistOrder?._id },
         { userid: userId }
       ]
     })
@@ -72,65 +73,64 @@ const CreateRZPorder = Asynchandler(async (req, res) => {
 
 const VerifyRazorpay = Asynchandler(async (req, res) => {
   try {
+    // console.log("body : ", req.body);
+    
     const { razorpay_order_id, razorpay_payment_id } = req.body;
-    if (!(razorpay_order_id || razorpay_payment_id)) {
-      throw new ApiError(400, "Missing required payment details")
+
+    if (!razorpay_order_id || !razorpay_payment_id) {
+      throw new ApiError(400, "Missing required payment details");
     }
+
     const orderInfo = await Razorpay_Instance.orders.fetch(razorpay_order_id);
-    console.log("Order info: ", orderInfo);
-
-    if (orderInfo?.status == 'paid') {
-      const UserReceipt = await Receipt.findById(orderInfo?.receipt)
-
-      if (UserReceipt.payment) {
-        throw new ApiError(409, "Payment Failed!!")
-      }
-      const order = await Order.findByIdAndUpdate(
-        {
-          $and: [
-            { orderId: UserReceipt?.orderId },
-            { userid: UserReceipt?.userid }
-          ]
-        },
-        {
-          $set: {
-            orderCompleted: true,
-            paymentmethod:'Online'
-          }
-        },
-        {
-          new: true
-        }
-      )
-
-      if (!order) {
-        throw new ApiError(400, "Payment is not updated yet")
-      }
-
-      UserReceipt.payment = true
-      UserReceipt.paymentId = razorpay_payment_id
-      UserReceipt.save({ validateBeforeSave: false })
-
-      return res.status(200).json(
-        new ApiResponse(200, {
-          message: "Payment verified successfully",
-          paymentId: razorpay_payment_id,
-          orderId: UserReceipt.orderId
-        })
-      );
-
-
-    } else {
-      return res.status(500)
-        .json(
-          new ApiError(500, "Payment Failed")
-        )
+    // console.log("orderInfo: ",orderInfo)
+    if (orderInfo?.status !== "paid") {
+      throw new ApiError(500, "Payment Failed");
     }
+
+    const UserReceipt = await Receipt.findById({_id:orderInfo?.receipt});
+
+    if (!UserReceipt) {
+      throw new ApiError(404, "Receipt not found");
+    }
+
+    if (UserReceipt.payment) {
+      throw new ApiError(409, "Payment already verified");
+    }
+
+    const updatedOrder = await Order.findOneAndUpdate(
+      {
+        $and: [
+          { orderId: UserReceipt.orderId },
+          { userid: UserReceipt.userid }
+        ]
+      },
+      {
+        $set: {
+          orderCompleted: true,
+          paymentmethod: "Online",
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedOrder) {
+      throw new ApiError(400, "Order update failed");
+    }
+
+    UserReceipt.payment = true;
+    UserReceipt.paymentId = razorpay_payment_id;
+    await UserReceipt.save({ validateBeforeSave: false });
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        message: "Payment verified successfully",
+        paymentId: razorpay_payment_id,
+        orderId: UserReceipt.orderId,
+      })
+    );
 
   } catch (error) {
-    return res.status(500).json(
-      new ApiError(500, error?.message)
-    )
+    return res.status(500).json(new ApiError(500, error.message));
   }
 })
 
