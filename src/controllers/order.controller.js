@@ -14,7 +14,7 @@ const Createorder = Asynchandler(async (req, res) => {
         const userId = req.user?._id;
         //!Generate OrderID (ORD-001)
         //?calculate price of a item from orderitem and create new document for orderitem
-        console.log("OrderDetails: ", req.body);
+        // console.log("OrderDetails: ", req.body);
 
 
         if (!isValidObjectId(userId)) {
