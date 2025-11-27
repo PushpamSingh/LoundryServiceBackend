@@ -202,7 +202,7 @@ const GetCurrentuser = Asynchandler(async (req, res) => {
         if (!isValidObjectId(userId)) {
             throw new ApiError(400, "Unauthorized ! Invalid userId")
         }
-        const CurrentUser = await User.findById(userId);
+        const CurrentUser = req?.user;
         if (!CurrentUser) {
             throw new ApiError(404, "User not exist")
         }
